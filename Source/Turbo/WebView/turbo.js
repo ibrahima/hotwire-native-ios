@@ -109,13 +109,14 @@
         // Scroll to the anchor on the page
         this.postMessage("visitProposalScrollingToAnchor", { location: location.toString(), options: options })
         Turbo.navigator.view.scrollToAnchorFromLocation(location)
-      } else if (window.Turbo && Turbo.navigator.location?.href === location.href) {
+      } else if (window.Turbo && Turbo.navigator.location?.href === location.href && options.action !== "advance") {
         // Refresh the page without native proposal
         this.postMessage("visitProposalRefreshingPage", { location: location.toString(), options: options })
         this.visitLocationWithOptionsAndRestorationIdentifier(location, options, Turbo.navigator.restorationIdentifier)
       } else {
         // Propose the visit
-        this.postMessage("visitProposed", { location: location.toString(), options: options })
+        const parseData = JSON.parse(JSON.stringify(options)); // Remove any unclonable values
+        this.postMessage("visitProposed", { location: location.toString(), options: parseData })
       }
     }
 
