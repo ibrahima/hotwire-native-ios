@@ -259,6 +259,12 @@ extension Session: VisitableDelegate {
             return
         }
 
+        // Ensure the web view is attached before the controller appears
+        // so UINavigationController can wire large-title collapsing correctly.
+        if visitable === currentVisit.visitable && currentVisit.state != .failed {
+            activateVisitable(visitable)
+        }
+
         // Navigating forward - complete navigation early.
         if visitable === currentVisit.visitable {
             let currentVisitHasResponse = currentVisit.options.response?.responseHTML != nil
@@ -292,9 +298,7 @@ extension Session: VisitableDelegate {
         if let currentVisit = currentVisit, visitable === currentVisit.visitable {
             // Appearing after successful navigation
             completeNavigationForCurrentVisit()
-            if currentVisit.state != .failed {
-                activateVisitable(visitable)
-            }
+            // Web view activation occurs in viewWillAppear to ensure proper scroll behavior.
         } else if let topmostVisit = topmostVisit, visitable === topmostVisit.visitable && topmostVisit.state == .completed {
             // Reappearing after canceled navigation
             visit(visitable, action: .restore)
