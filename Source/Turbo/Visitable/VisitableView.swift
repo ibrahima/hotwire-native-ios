@@ -68,22 +68,16 @@ open class VisitableView: UIView {
         guard let scrollView = webView?.scrollView, allowsPullToRefresh else { return }
 
         #if !targetEnvironment(macCatalyst)
-        scrollView.addSubview(refreshControl)
-
-        /// Infer refresh control's default height from its frame, if given.
-        /// Otherwise fallback to 60 (the default height).
-        let refreshControlHeight = refreshControl.frame.height > 0 ? refreshControl.frame.height : 60
-
-        NSLayoutConstraint.activate([
-            refreshControl.centerXAnchor.constraint(equalTo: centerXAnchor),
-            refreshControl.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
-            refreshControl.heightAnchor.constraint(equalToConstant: refreshControlHeight)
-        ])
+        // Attach via UIScrollView API to avoid conflicting layout constraints
+        // that can interfere with navigation bar large-title collapsing.
+        scrollView.refreshControl = refreshControl
         #endif
     }
 
     private func removeRefreshControl() {
         refreshControl.endRefreshing()
+        // Detach from the scroll view if assigned
+        webView?.scrollView.refreshControl = nil
         refreshControl.removeFromSuperview()
     }
 
