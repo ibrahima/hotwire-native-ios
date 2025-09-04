@@ -26,6 +26,7 @@ extension SceneController: UIWindowSceneDelegate {
         window?.makeKeyAndVisible()
 
         tabBarController.load(HotwireTab.all)
+        tabBarController.activeNavigator.activeNavigationController.navigationBar.prefersLargeTitles = true
     }
 }
 
