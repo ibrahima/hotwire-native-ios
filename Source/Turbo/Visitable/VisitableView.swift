@@ -38,7 +38,10 @@ open class VisitableView: UIView {
     }
 
     private func showOrHideWebView() {
-        webView?.isHidden = isShowingScreenshot
+        // Keep the web view visible even when showing the screenshot overlay.
+        // Hiding the web view can prevent the navigation bar from detecting
+        // the underlying scroll view, which breaks large-title collapsing.
+        webView?.isHidden = false
     }
 
     // MARK: Refresh Control
