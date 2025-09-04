@@ -45,7 +45,9 @@ open class VisitableView: UIView {
 
     open lazy var refreshControl: UIRefreshControl = {
         let refreshControl = UIRefreshControl()
-        refreshControl.translatesAutoresizingMaskIntoConstraints = false
+        // Do not opt into Auto Layout for refresh controls; the scroll view manages layout.
+        // Using Auto Layout here can interfere with navigation bar large-title collapsing.
+        refreshControl.translatesAutoresizingMaskIntoConstraints = true
         refreshControl.addTarget(self, action: #selector(refresh(_:)), for: .valueChanged)
         return refreshControl
     }()
@@ -66,24 +68,21 @@ open class VisitableView: UIView {
 
     private func installRefreshControl() {
         guard let scrollView = webView?.scrollView, allowsPullToRefresh else { return }
-
         #if !targetEnvironment(macCatalyst)
-        scrollView.addSubview(refreshControl)
-
-        /// Infer refresh control's default height from its frame, if given.
-        /// Otherwise fallback to 60 (the default height).
-        let refreshControlHeight = refreshControl.frame.height > 0 ? refreshControl.frame.height : 60
-
-        NSLayoutConstraint.activate([
-            refreshControl.centerXAnchor.constraint(equalTo: centerXAnchor),
-            refreshControl.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor),
-            refreshControl.heightAnchor.constraint(equalToConstant: refreshControlHeight)
-        ])
+        // Attach via the dedicated API so UIKit manages positioning with safe areas
+        // and integrates correctly with large-title collapsing.
+        scrollView.refreshControl = refreshControl
         #endif
     }
 
     private func removeRefreshControl() {
         refreshControl.endRefreshing()
+        #if !targetEnvironment(macCatalyst)
+        // Detach from the scroll view's dedicated property if present.
+        if let scrollView = webView?.scrollView, scrollView.refreshControl === refreshControl {
+            scrollView.refreshControl = nil
+        }
+        #endif
         refreshControl.removeFromSuperview()
     }
 
