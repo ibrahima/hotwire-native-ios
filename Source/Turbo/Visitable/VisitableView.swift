@@ -26,6 +26,10 @@ open class VisitableView: UIView {
         self.visitable = visitable
         addSubview(webView)
         addFillConstraints(for: webView)
+        
+        // Configure scrollView for proper large title behavior
+        webView.scrollView.contentInsetAdjustmentBehavior = .automatic
+        
         installRefreshControl()
         showOrHideWebView()
     }

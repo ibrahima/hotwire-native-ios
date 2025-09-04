@@ -25,6 +25,11 @@ open class VisitableViewController: UIViewController, Visitable {
     override open func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor.white
+        
+        // Configure for proper large title behavior
+        extendedLayoutIncludesOpaqueBars = false
+        edgesForExtendedLayout = .all
+        
         installVisitableView()
     }
 
