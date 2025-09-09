@@ -43,6 +43,11 @@ open class HotwireWebViewController: VisitableViewController, BridgeDestination 
     override open func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         bridgeDelegate.onViewDidDisappear()
+
+        // Defensive cleanup: ensure any right bar buttons added by bridge components
+        // do not persist beyond this view controller's lifetime (e.g., after replace_root).
+        navigationItem.rightBarButtonItem = nil
+        navigationItem.rightBarButtonItems = nil
     }
 
     // MARK: Visitable
