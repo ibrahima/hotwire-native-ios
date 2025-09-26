@@ -77,6 +77,11 @@ class NavigationHierarchyController {
     func clearAll(animated: Bool) {
         navigationController.dismiss(animated: animated)
         navigationController.popToRootViewController(animated: animated)
+        // Log main stack after clearing to root
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.logNavigationStack(self.navigationController, stack: .main, reason: "clearAll")
+        }
         refreshIfTopViewControllerIsVisitable(from: .main)
     }
 
@@ -126,6 +131,11 @@ class NavigationHierarchyController {
                 modalNavigationController.setViewControllers([controller], animated: proposal.animated)
                 modalNavigationController.setModalPresentationStyle(via: proposal)
                 navigationController.present(modalNavigationController, animated: proposal.animated)
+                // Log modal stack after setting initial modal controller
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    self.logNavigationStack(self.modalNavigationController, stack: .modal, reason: "setViewControllers")
+                }
             }
         }
     }
@@ -136,12 +146,20 @@ class NavigationHierarchyController {
                                didReplaceModalContext: Bool = false) {
         if visitingSamePage(on: navigationController, with: controller, via: proposal) {
             navigationController.replaceLastViewController(with: controller)
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.logNavigationStack(navigationController, stack: self.stackType(for: navigationController), reason: "replaceLast")
+            }
         } else if visitingPreviousPage(on: navigationController, with: controller, via: proposal) {
             navigationController.popViewController(animated: proposal.animated)
         } else if proposal.options.action == .advance || didReplaceModalContext {
             navigationController.pushViewController(controller, animated: proposal.animated)
         } else {
             navigationController.replaceLastViewController(with: controller)
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.logNavigationStack(navigationController, stack: self.stackType(for: navigationController), reason: "replaceLast")
+            }
         }
     }
 
@@ -176,6 +194,10 @@ class NavigationHierarchyController {
             }
             navigationController.dismiss(animated: proposal.animated)
             navigationController.replaceLastViewController(with: controller)
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                self.logNavigationStack(self.navigationController, stack: .main, reason: "replaceLast")
+            }
         case .modal:
             if let visitable = controller as? Visitable {
                 delegate.visit(visitable, on: .modal, with: proposal.options)
@@ -184,10 +206,18 @@ class NavigationHierarchyController {
 
             if navigationController.presentedViewController != nil {
                 modalNavigationController.replaceLastViewController(with: controller)
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    self.logNavigationStack(self.modalNavigationController, stack: .modal, reason: "replaceLast")
+                }
             } else {
                 modalNavigationController.setViewControllers([controller], animated: false)
                 modalNavigationController.setModalPresentationStyle(via: proposal)
                 navigationController.present(modalNavigationController, animated: proposal.animated)
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
+                    self.logNavigationStack(self.modalNavigationController, stack: .modal, reason: "setViewControllers")
+                }
             }
         }
     }
@@ -220,6 +250,10 @@ class NavigationHierarchyController {
 
         navigationController.dismiss(animated: proposal.animated)
         navigationController.setViewControllers([controller], animated: proposal.animated)
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.logNavigationStack(self.navigationController, stack: .main, reason: "setViewControllers")
+        }
     }
     
     private func refreshIfTopViewControllerIsVisitable(from stack: NavigationStackType) {
@@ -236,5 +270,29 @@ class NavigationHierarchyController {
         guard dismissModal else { return }
 
         navigationController.dismiss(animated: visit.animated)
+    }
+
+    // MARK: Debug Logging
+    private func stackType(for navController: UINavigationController) -> NavigationStackType {
+        navController === modalNavigationController ? .modal : .main
+    }
+
+    private func logNavigationStack(_ navController: UINavigationController,
+                                    stack: NavigationStackType,
+                                    reason: String) {
+        let items = navController.viewControllers.enumerated().map { index, vc -> String in
+            let name = String(describing: type(of: vc))
+            if let visitable = vc as? Visitable {
+                return "[#\(index)] \(name) — \(visitable.currentVisitableURL.absoluteString)"
+            } else if let visitableVC = vc as? VisitableViewController {
+                return "[#\(index)] \(name) — \(visitableVC.currentVisitableURL.absoluteString)"
+            } else {
+                return "[#\(index)] \(name) — (no URL)"
+            }
+        }.joined(separator: "\n    ")
+
+        let stackName = stack == .modal ? "modal" : "main"
+        let message = "[Hotwire] \(stackName) stack (\(reason)) count=\(navController.viewControllers.count):\n    \(items)"
+        logger.debug("\(message, privacy: .public)")
     }
 }

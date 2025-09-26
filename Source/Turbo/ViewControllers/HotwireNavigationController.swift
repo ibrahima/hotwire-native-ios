@@ -36,6 +36,12 @@ open class HotwireNavigationController: UINavigationController {
         }
 
         super.pushViewController(viewController, animated: animated)
+
+        // Debug: log stack after push
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.logNavigationStack(reason: "push")
+        }
     }
 
     open override func popViewController(animated: Bool) -> UIViewController? {
@@ -46,6 +52,12 @@ open class HotwireNavigationController: UINavigationController {
 
         if let topVisitableViewController = topViewController as? VisitableViewController {
             topVisitableViewController.appearReason = .revealedByPop
+        }
+
+        // Debug: log stack after pop
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.logNavigationStack(reason: "pop")
         }
 
         return poppedViewController
@@ -80,5 +92,25 @@ open class HotwireNavigationController: UINavigationController {
         }
 
         super.viewWillDisappear(animated)
+    }
+}
+
+// MARK: Debug Logging
+private extension HotwireNavigationController {
+    func logNavigationStack(reason: String) {
+        let items = viewControllers.enumerated().map { index, vc -> String in
+            let name = String(describing: type(of: vc))
+            if let visitable = vc as? Visitable {
+                return "[#\(index)] \(name) — \(visitable.currentVisitableURL.absoluteString)"
+            } else if let visitableVC = vc as? VisitableViewController {
+                return "[#\(index)] \(name) — \(visitableVC.currentVisitableURL.absoluteString)"
+            } else {
+                return "[#\(index)] \(name) — (no URL)"
+            }
+        }.joined(separator: "\n    ")
+
+        let stackName = presentingViewController != nil ? "modal" : "main"
+        let message = "[Hotwire] \(stackName) stack (\(reason)) count=\(viewControllers.count):\n    \(items)"
+        logger.debug("\(message, privacy: .public)")
     }
 }
