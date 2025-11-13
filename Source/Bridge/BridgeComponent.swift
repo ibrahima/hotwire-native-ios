@@ -54,7 +54,7 @@ open class BridgeComponent: BridgingComponent {
     }
     
     @discardableResult
-    /// Replies to the web with a received message, optionally replacing its `event` or `jsonData`.
+    /// Replies to the web with a received message.
     ///
     /// - Parameter message: The message to be replied with.
     /// - Returns: `true` if the reply was successful, `false` if the bridge is not available.
@@ -67,7 +67,7 @@ open class BridgeComponent: BridgingComponent {
         return try await delegate.reply(with: message)
     }
 
-    /// Replies to the web with a received message, optionally replacing its `event` or `jsonData`.
+    /// Replies to the web with a received message.
     ///
     /// - Parameters:
     ///     - message: The message to be replied with.
@@ -83,6 +83,70 @@ open class BridgeComponent: BridgingComponent {
 
             do {
                 let result = try await delegate.reply(with: message)
+                completion?(.success(result))
+            } catch {
+                completion?(.failure(error))
+            }
+        }
+    }
+
+    @discardableResult
+    /// Replies to the web with a message, replacing its `event` and/or `jsonData`.
+    ///
+    /// - Parameters:
+    ///   - message: The original message to be replied to.
+    ///   - event: The `event` to replace in the message. If `nil`, the original event is used.
+    ///   - jsonData: The `jsonData` to replace in the message. If `nil`, the original jsonData is used.
+    /// - Returns: `true` if the reply was successful, `false` if the bridge is not available.
+    public func reply(to message: Message, replacingEvent event: String? = nil, jsonData: String? = nil) async throws -> Bool {
+        let messageReply = message.replacing(event: event, jsonData: jsonData)
+        return try await reply(with: messageReply)
+    }
+
+    /// Replies to the web with a message, replacing its `event` and/or `jsonData`.
+    ///
+    /// - Parameters:
+    ///   - message: The original message to be replied to.
+    ///   - event: The `event` to replace in the message. If `nil`, the original event is used.
+    ///   - jsonData: The `jsonData` to replace in the message. If `nil`, the original jsonData is used.
+    ///   - completion: An optional completion handler to be called when the reply attempt completes.
+    ///                 It includes a result indicating whether the reply was successful or not.
+    public func reply(to message: Message, replacingEvent event: String? = nil, jsonData: String? = nil, completion: ReplyCompletionHandler? = nil) {
+        Task {
+            do {
+                let result = try await reply(to: message, replacingEvent: event, jsonData: jsonData)
+                completion?(.success(result))
+            } catch {
+                completion?(.failure(error))
+            }
+        }
+    }
+
+    @discardableResult
+    /// Replies to the web with a message, replacing its `event` and/or data with an `Encodable` object.
+    ///
+    /// - Parameters:
+    ///   - message: The original message to be replied to.
+    ///   - event: The `event` to replace in the message. If `nil`, the original event is used.
+    ///   - data: An instance conforming to `Encodable` to be included as `jsonData` in the reply message.
+    /// - Returns: `true` if the reply was successful, `false` if the bridge is not available.
+    public func reply<T: Encodable>(to message: Message, replacingEvent event: String? = nil, data: T) async throws -> Bool {
+        let messageReply = message.replacing(event: event, data: data)
+        return try await reply(with: messageReply)
+    }
+
+    /// Replies to the web with a message, replacing its `event` and/or data with an `Encodable` object.
+    ///
+    /// - Parameters:
+    ///   - message: The original message to be replied to.
+    ///   - event: The `event` to replace in the message. If `nil`, the original event is used.
+    ///   - data: An instance conforming to `Encodable` to be included as `jsonData` in the reply message.
+    ///   - completion: An optional completion handler to be called when the reply attempt completes.
+    ///                 It includes a result indicating whether the reply was successful or not.
+    public func reply<T: Encodable>(to message: Message, replacingEvent event: String? = nil, data: T, completion: ReplyCompletionHandler? = nil) {
+        Task {
+            do {
+                let result = try await reply(to: message, replacingEvent: event, data: data)
                 completion?(.success(result))
             } catch {
                 completion?(.failure(error))
